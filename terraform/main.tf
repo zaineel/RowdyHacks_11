@@ -13,18 +13,11 @@ provider "vultr" {
 
 # Create a PostgreSQL managed database
 resource "vultr_database" "payitforward_db" {
-  database_engine        = "pg"
+  database_engine         = "pg"
   database_engine_version = "15"
-  region                = var.region
-  plan                  = var.database_plan
-  label                 = "payitforward-postgres"
-  tag                   = "production"
-
-  # Database configuration
-  mysql_sql_modes       = []
-  mysql_require_primary_key = false
-  mysql_slow_query_log  = false
-  mysql_long_query_time = 0
+  region                  = var.region
+  plan                    = var.database_plan
+  label                   = "payitforward-postgres"
 
   # Trust all IPs (for demo - restrict in production)
   trusted_ips = ["0.0.0.0/0"]
@@ -36,12 +29,9 @@ resource "vultr_instance" "backend_server" {
   region           = var.region
   os_id            = var.os_id
   label            = "payitforward-backend"
-  tag              = "production"
   hostname         = "payitforward-api"
   enable_ipv6      = true
-  backups          = "enabled"
-  ddos_protection  = false
-  activation_email = false
+  firewall_group_id = vultr_firewall_group.backend_firewall.id
 
   # User data to set up Node.js environment
   user_data = base64encode(<<-EOF
