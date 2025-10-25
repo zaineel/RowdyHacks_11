@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rye&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dusty-900 text-dusty-50;
+    background-image:
+      radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+  }
+}
+
+@layer components {
+  /* Western-themed button */
+  .btn-frontier {
+    @apply px-6 py-3 bg-frontier-500 text-white font-semibold rounded-lg
+           hover:bg-frontier-600 transition-all duration-200
+           shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+  }
+
+  .btn-frontier-outline {
+    @apply px-6 py-3 border-2 border-frontier-500 text-frontier-500 font-semibold rounded-lg
+           hover:bg-frontier-500 hover:text-white transition-all duration-200;
+  }
+
+  /* Starlight button */
+  .btn-starlight {
+    @apply px-6 py-3 bg-starlight-500 text-white font-semibold rounded-lg
+           hover:bg-starlight-600 transition-all duration-200
+           shadow-lg hover:shadow-xl;
+  }
+
+  /* Card component */
+  .card {
+    @apply bg-dusty-800 rounded-xl shadow-xl p-6 border border-dusty-700;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:shadow-2xl hover:border-frontier-500;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full px-4 py-3 bg-dusty-700 border border-dusty-600 rounded-lg
+           text-dusty-50 placeholder-dusty-400
+           focus:outline-none focus:border-frontier-500 focus:ring-2 focus:ring-frontier-500/20
+           transition-all duration-200;
+  }
+
+  /* Badge */
+  .badge {
+    @apply px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+
+  .badge-warning {
+    @apply badge bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .badge-info {
+    @apply badge bg-starlight-500/20 text-starlight-400 border border-starlight-500/30;
+  }
+
+  /* Western header */
+  .western-title {
+    @apply font-western text-4xl md:text-5xl text-frontier-400 tracking-wide;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply inline-block w-8 h-8 border-4 border-dusty-600 border-t-frontier-500 rounded-full animate-spin;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: theme('colors.dusty.800');
+}
+
+::-webkit-scrollbar-thumb {
+  background: theme('colors.frontier.500');
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.frontier.600');
+}

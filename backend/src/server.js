@@ -1,0 +1,97 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import compression from 'compression';
+import dotenv from 'dotenv';
+
+// Import routes
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import circleRoutes from './routes/circles.js';
+import paymentRoutes from './routes/payments.js';
+import vouchRoutes from './routes/vouches.js';
+import creditRoutes from './routes/credit.js';
+import aiRoutes from './routes/ai.js';
+
+// Import middleware
+import { errorHandler } from './middleware/errorHandler.js';
+import { notFound } from './middleware/notFound.js';
+import { rateLimiter } from './middleware/rateLimiter.js';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Security middleware
+app.use(helmet());
+app.use(compression());
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
+// Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Logging middleware
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined'));
+}
+
+// Rate limiting
+app.use('/api/', rateLimiter);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'PayItForward API',
+    version: '1.0.0'
+  });
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/circles', circleRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/vouches', vouchRoutes);
+app.use('/api/credit', creditRoutes);
+app.use('/api/ai', aiRoutes);
+
+// 404 handler
+app.use(notFound);
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`
+  🤠 PayItForward API Server
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🚀 Server running on port ${PORT}
+  🌍 Environment: ${process.env.NODE_ENV || 'development'}
+  📍 API Base: http://localhost:${PORT}/api
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  `);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  process.exit(0);
+});
+
+export default app;
