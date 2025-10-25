@@ -45,15 +45,43 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useAuth0 } from '@auth0/auth0-vue';
 import { useRouter } from 'vue-router';
 
-const { isAuthenticated, user, logout: auth0Logout } = useAuth0();
 const router = useRouter();
 
+// Check if in demo mode
+const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true' ||
+                   import.meta.env.VITE_AUTH0_DOMAIN === 'demo-mode';
+
+// Demo user for testing
+const demoUser = ref({
+  name: 'Demo Cowboy',
+  email: 'demo@payitforward.com'
+});
+
+// Use Auth0 or demo mode
+let isAuthenticated, user, auth0Logout;
+
+if (!isDemoMode) {
+  const auth0 = useAuth0();
+  isAuthenticated = auth0.isAuthenticated;
+  user = auth0.user;
+  auth0Logout = auth0.logout;
+} else {
+  // Demo mode - always authenticated
+  isAuthenticated = ref(true);
+  user = demoUser;
+  auth0Logout = () => {};
+}
+
 const logout = () => {
-  auth0Logout({ logoutParams: { returnTo: window.location.origin } });
+  if (isDemoMode) {
+    router.push('/');
+  } else {
+    auth0Logout({ logoutParams: { returnTo: window.location.origin } });
+  }
 };
 </script>
 

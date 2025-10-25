@@ -47,9 +47,17 @@
         <button @click="login" class="btn-frontier text-lg">
           🚀 Get Started
         </button>
+        <button @click="demoMode" class="btn-starlight text-lg">
+          🎮 Demo Mode
+        </button>
         <button @click="scrollToLearnMore" class="btn-frontier-outline text-lg">
           Learn More
         </button>
+      </div>
+
+      <!-- Demo Mode Info -->
+      <div class="mt-6 text-sm text-dusty-400">
+        <p>💡 Click "Demo Mode" to explore without Auth0 setup</p>
       </div>
 
       <!-- Tech Stack Badges -->
@@ -75,6 +83,11 @@ const router = useRouter();
 
 const login = () => {
   loginWithRedirect();
+};
+
+const demoMode = () => {
+  // Skip Auth0 and go directly to dashboard
+  router.push('/dashboard');
 };
 
 const scrollToLearnMore = () => {
