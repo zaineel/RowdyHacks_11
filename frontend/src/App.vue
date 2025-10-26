@@ -18,6 +18,14 @@
               >Dashboard</router-link
             >
             <router-link to="/circles" class="nav-link">My Circles</router-link>
+            <router-link to="/marketplace" class="nav-link relative">
+              Marketplace
+              <span
+                v-if="pendingRequestsCount > 0"
+                class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {{ pendingRequestsCount }}
+              </span>
+            </router-link>
             <router-link to="/payments" class="nav-link">Payments</router-link>
             <router-link to="/credit" class="nav-link"
               >Credit Score</router-link
@@ -121,6 +129,40 @@ if (!isDemoMode) {
   user = demoUser;
   auth0Logout = () => {};
 }
+
+// Notification state
+const pendingRequestsCount = ref(0);
+
+// Load pending requests count
+const loadPendingRequestsCount = async () => {
+  if (!isAuthenticated.value) return;
+
+  try {
+    const response = await api.marketplace.pendingRequests();
+    pendingRequestsCount.value = response.data.data.length;
+  } catch (error) {
+    console.error("Error loading pending requests count:", error);
+  }
+};
+
+// Load notifications on mount and when authenticated
+onMounted(() => {
+  if (isAuthenticated.value) {
+    loadPendingRequestsCount();
+  }
+
+  // Listen for notification refresh events
+  window.addEventListener("refreshNotifications", loadPendingRequestsCount);
+});
+
+// Watch for authentication changes
+watch(isAuthenticated, (authenticated) => {
+  if (authenticated) {
+    loadPendingRequestsCount();
+  } else {
+    pendingRequestsCount.value = 0;
+  }
+});
 
 const logout = () => {
   if (isDemoMode) {

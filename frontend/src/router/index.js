@@ -43,6 +43,30 @@ const routes = [
     component: () => import('../views/Credit.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/marketplace',
+    name: 'Marketplace',
+    component: () => import('../views/Marketplace.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/marketplace/list',
+    name: 'ListItem',
+    component: () => import('../views/ListItem.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/marketplace/my-dashboard',
+    name: 'MyMarketplace',
+    component: () => import('../views/MyMarketplace.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/marketplace/:id',
+    name: 'ItemDetail',
+    component: () => import('../views/ItemDetail.vue'),
+    meta: { requiresAuth: true },
+  },
 ];
 
 const router = createRouter({
