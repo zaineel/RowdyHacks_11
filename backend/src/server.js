@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import circleRoutes from "./routes/circles.js";
 import paymentRoutes from "./routes/payments.js";
+import payoutRoutes from "./routes/payouts.js";
 import vouchRoutes from "./routes/vouches.js";
 import creditRoutes from "./routes/credit.js";
 import aiRoutes from "./routes/ai.js";
@@ -66,8 +67,9 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("combined"));
 }
 
-// Rate limiting
-app.use("/api/", rateLimiter);
+// Rate limiting (DISABLED FOR HACKATHON DEMO)
+// TODO: Re-enable for production deployment
+// app.use("/api/", rateLimiter);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -84,6 +86,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/circles", circleRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/payouts", payoutRoutes);
 app.use("/api/vouches", vouchRoutes);
 app.use("/api/credit", creditRoutes);
 app.use("/api/ai", aiRoutes);

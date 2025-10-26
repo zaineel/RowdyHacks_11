@@ -3,7 +3,7 @@ import { updateCreditScore } from '../services/creditService.js';
 
 export const makePayment = async (req, res, next) => {
   try {
-    const { circle_id, amount } = req.body;
+    const { circle_id, amount, payment_method, card_details } = req.body;
     const auth0_id = req.auth.sub;
 
     // Get user ID
@@ -14,13 +14,33 @@ export const makePayment = async (req, res, next) => {
     const circleResult = await query('SELECT current_cycle FROM circles WHERE id = $1', [circle_id]);
     const cycle_number = circleResult.rows[0].current_cycle;
 
+    // Validate payment method
+    const validMethods = ['credit_card', 'debit_card', 'bank_account', 'digital_wallet', 'mock'];
+    const finalPaymentMethod = validMethods.includes(payment_method) ? payment_method : 'mock';
+
+    // TODO: In production, integrate with a payment processor (Stripe, Square, etc.)
+    // For now, we'll simulate successful payment processing
+    if (finalPaymentMethod === 'credit_card' || finalPaymentMethod === 'debit_card') {
+      // In production, you would:
+      // 1. Tokenize card details with payment processor
+      // 2. Process the payment
+      // 3. Handle success/failure responses
+      // For demo: validate that card_details were provided
+      if (!card_details || !card_details.number || !card_details.expiry || !card_details.cvv) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Card details are required for card payments', status: 400 }
+        });
+      }
+    }
+
     const result = await transaction(async (client) => {
       // Create payment record
       const paymentResult = await client.query(
         `INSERT INTO payments (circle_id, user_id, amount, cycle_number, due_date, status, payment_method)
-         VALUES ($1, $2, $3, $4, CURRENT_DATE, 'completed', 'mock')
+         VALUES ($1, $2, $3, $4, CURRENT_DATE, 'completed', $5)
          RETURNING *`,
-        [circle_id, user_id, amount, cycle_number]
+        [circle_id, user_id, amount, cycle_number, finalPaymentMethod]
       );
 
       // Update member contribution total
@@ -29,6 +49,14 @@ export const makePayment = async (req, res, next) => {
          SET total_contributions = total_contributions + $1
          WHERE circle_id = $2 AND user_id = $3`,
         [amount, circle_id, user_id]
+      );
+
+      // Add payment to current pool
+      await client.query(
+        `UPDATE circles
+         SET current_pool_amount = current_pool_amount + $1
+         WHERE id = $2`,
+        [amount, circle_id]
       );
 
       // Update credit score

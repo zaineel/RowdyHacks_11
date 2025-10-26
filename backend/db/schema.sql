@@ -31,6 +31,7 @@ CREATE TABLE circles (
   max_members INTEGER DEFAULT 20,
   current_members INTEGER DEFAULT 1,
   current_cycle INTEGER DEFAULT 1,
+  current_pool_amount DECIMAL(10, 2) DEFAULT 0, -- Tracks pooled funds for current cycle
   payout_order JSONB, -- Array of user IDs in payout order
   next_payout_date DATE,
   next_payout_user_id UUID REFERENCES users(id),

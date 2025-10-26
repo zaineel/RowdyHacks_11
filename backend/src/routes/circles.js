@@ -1,6 +1,7 @@
 import express from 'express';
 import { checkJwt, requireCircleAdmin, requireCircleMember } from '../middleware/auth.js';
 import * as circleController from '../controllers/circleController.js';
+import * as payoutController from '../controllers/payoutController.js';
 
 const router = express.Router();
 
@@ -66,5 +67,19 @@ router.post('/:id/approve-member', checkJwt, requireCircleAdmin, circleControlle
  * @access  Private
  */
 router.get('/:id/schedule', checkJwt, requireCircleMember, circleController.getPayoutSchedule);
+
+/**
+ * @route   GET /api/circles/:id/pool-status
+ * @desc    Get current pool status and progress
+ * @access  Private
+ */
+router.get('/:id/pool-status', checkJwt, requireCircleMember, payoutController.getPoolStatus);
+
+/**
+ * @route   GET /api/circles/payouts-due
+ * @desc    Get circles that are due for payout
+ * @access  System (for Cloudflare Worker)
+ */
+router.get('/payouts-due', payoutController.getPayoutsDue);
 
 export default router;

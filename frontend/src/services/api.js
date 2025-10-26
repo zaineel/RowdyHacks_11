@@ -75,6 +75,7 @@ export default {
     update: (id, data) => api.put(`/circles/${id}`, data),
     getSchedule: (id) => api.get(`/circles/${id}/schedule`),
     approveMember: (id, userId) => api.post(`/circles/${id}/approve-member`, { user_id: userId }),
+    getPoolStatus: (id) => api.get(`/circles/${id}/pool-status`),
   },
 
   // Payments
@@ -83,6 +84,13 @@ export default {
     getByCircle: (circleId) => api.get(`/payments/circle/${circleId}`),
     getByUser: (userId) => api.get(`/payments/user/${userId}`),
     getUpcoming: (userId) => api.get(`/payments/upcoming/${userId}`),
+  },
+
+  // Payouts
+  payouts: {
+    process: (data) => api.post('/payouts/process', data),
+    getByCircle: (circleId) => api.get(`/payouts/circle/${circleId}`),
+    getByUser: (userId) => api.get(`/payouts/user/${userId}`),
   },
 
   // Vouches

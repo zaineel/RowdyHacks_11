@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rye&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rye&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -7,12 +7,20 @@
 @layer base {
   body {
     @apply bg-dusty-900 text-dusty-50;
-    background-image:
-      radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-image: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.1) 1px,
+      transparent 1px
+    );
     background-size: 50px 50px;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold;
   }
 }
@@ -109,14 +117,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: theme('colors.dusty.800');
+  background: theme("colors.dusty.800");
 }
 
 ::-webkit-scrollbar-thumb {
-  background: theme('colors.frontier.500');
+  background: theme("colors.frontier.500");
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: theme('colors.frontier.600');
+  background: theme("colors.frontier.600");
 }
