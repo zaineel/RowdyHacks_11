@@ -19,6 +19,13 @@ router.post('/', checkJwt, requireCircleMember, vouchController.createVouch);
 router.get('/circle/:circleId/user/:userId', checkJwt, vouchController.getUserVouches);
 
 /**
+ * @route   GET /api/vouches/circle/:circleId/my-vouches
+ * @desc    Get all vouches I've made in a circle
+ * @access  Private
+ */
+router.get('/circle/:circleId/my-vouches', checkJwt, vouchController.getMyVouchesInCircle);
+
+/**
  * @route   DELETE /api/vouches/:id
  * @desc    Revoke a vouch
  * @access  Private

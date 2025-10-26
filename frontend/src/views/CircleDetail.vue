@@ -100,8 +100,30 @@
             <span :class="`badge-${member.status === 'active' ? 'success' : 'warning'}`">
               {{ member.status }}
             </span>
-            <button v-if="member.status === 'pending'" class="btn-frontier text-sm">
-              Vouch
+            <!-- Vouch button for all active members (including admin) who haven't vouched yet -->
+            <button
+              v-if="member.status === 'pending' && member.user_id !== currentUserId && !userVouches.has(member.user_id)"
+              @click="vouchMember(member)"
+              class="btn-frontier text-sm"
+              :disabled="vouching"
+            >
+              {{ vouching ? 'Vouching...' : 'Vouch' }}
+            </button>
+            <!-- Show "Vouched" badge if user already vouched -->
+            <span
+              v-if="member.status === 'pending' && userVouches.has(member.user_id)"
+              class="text-xs px-3 py-1 rounded bg-frontier-500/20 text-frontier-400 border border-frontier-500"
+            >
+              ✓ Vouched
+            </span>
+            <!-- Approve button for admin only -->
+            <button
+              v-if="member.status === 'pending' && isAdmin"
+              @click="approveMember(member)"
+              class="btn-starlight text-sm ml-2"
+              :disabled="approving"
+            >
+              {{ approving ? 'Approving...' : 'Approve' }}
             </button>
           </div>
         </div>
@@ -146,11 +168,17 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAuth0 } from '@auth0/auth0-vue';
 import api from '../services/api';
 
 const route = useRoute();
+const { user } = useAuth0();
 const activeTab = ref('members');
 const loading = ref(false);
+const vouching = ref(false);
+const approving = ref(false);
+const currentUserId = ref(null);
+const isAdmin = ref(false);
 
 const circle = ref({
   name: '',
@@ -166,6 +194,7 @@ const circle = ref({
 
 const members = ref([]);
 const payoutSchedule = ref([]);
+const userVouches = ref(new Map()); // Track which members current user has vouched for
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -179,22 +208,115 @@ const copyInviteCode = () => {
   alert('Invite code copied to clipboard!');
 };
 
+const vouchMember = async (member) => {
+  if (!confirm(`Vouch for ${member.name}? This will help them get approved to join the circle.`)) {
+    return;
+  }
+
+  vouching.value = true;
+  try {
+    await api.vouches.create({
+      circle_id: route.params.id,
+      vouchee_id: member.user_id,
+      trust_level: 5,
+      notes: `Vouched for ${member.name}`
+    });
+
+    // Mark that current user has vouched for this member
+    userVouches.value.set(member.user_id, true);
+
+    alert(`Successfully vouched for ${member.name}!`);
+
+    // Reload members to show updated status
+    const membersResponse = await api.circles.getMembers(route.params.id);
+    members.value = membersResponse.data.data;
+  } catch (error) {
+    console.error('Error vouching for member:', error);
+
+    // If duplicate vouch, mark it as vouched
+    if (error.response?.status === 409 || error.response?.data?.error?.message?.includes('already')) {
+      userVouches.value.set(member.user_id, true);
+      alert(`You have already vouched for ${member.name}!`);
+    } else {
+      const errorMessage = error.response?.data?.error?.message || 'Failed to vouch for member. Please try again.';
+      alert(errorMessage);
+    }
+  } finally {
+    vouching.value = false;
+  }
+};
+
+const approveMember = async (member) => {
+  if (!confirm(`Approve ${member.name} to join the circle?`)) {
+    return;
+  }
+
+  approving.value = true;
+  try {
+    await api.circles.approveMember(route.params.id, member.user_id);
+
+    alert(`${member.name} has been approved and is now an active member!`);
+
+    // Reload circle data and members
+    const circleResponse = await api.circles.getById(route.params.id);
+    circle.value = circleResponse.data.data;
+
+    const membersResponse = await api.circles.getMembers(route.params.id);
+    members.value = membersResponse.data.data;
+
+    const scheduleResponse = await api.circles.getSchedule(route.params.id);
+    payoutSchedule.value = scheduleResponse.data.data;
+  } catch (error) {
+    console.error('Error approving member:', error);
+    const errorMessage = error.response?.data?.error?.message || 'Failed to approve member. Please try again.';
+    alert(errorMessage);
+  } finally {
+    approving.value = false;
+  }
+};
+
 onMounted(async () => {
   const circleId = route.params.id;
   loading.value = true;
 
   try {
+    // Get current user's database ID
+    const currentUserResponse = await api.auth.getCurrentUser();
+    currentUserId.value = currentUserResponse.data.data.id;
+
     // Load circle data
     const circleResponse = await api.circles.getById(circleId);
     circle.value = circleResponse.data.data;
 
-    // Load members
-    const membersResponse = await api.circles.getMembers(circleId);
-    members.value = membersResponse.data.data;
+    // Check if current user is the admin
+    isAdmin.value = circle.value.admin_id === currentUserId.value;
 
-    // Load payout schedule
-    const scheduleResponse = await api.circles.getSchedule(circleId);
-    payoutSchedule.value = scheduleResponse.data.data;
+    // Load members (non-critical, continue if it fails)
+    try {
+      const membersResponse = await api.circles.getMembers(circleId);
+      members.value = membersResponse.data.data;
+    } catch (error) {
+      console.error('Error loading members:', error);
+    }
+
+    // Load payout schedule (non-critical, continue if it fails)
+    try {
+      const scheduleResponse = await api.circles.getSchedule(circleId);
+      payoutSchedule.value = scheduleResponse.data.data;
+    } catch (error) {
+      console.error('Error loading schedule:', error);
+    }
+
+    // Load current user's vouches in this circle (non-critical, continue if it fails)
+    try {
+      const vouchesResponse = await api.vouches.getMyVouches(circleId);
+      // Populate the userVouches Map with vouchee_ids
+      vouchesResponse.data.data.forEach(vouch => {
+        userVouches.value.set(vouch.vouchee_id, true);
+      });
+    } catch (error) {
+      console.error('Error loading vouches:', error);
+    }
   } catch (error) {
     console.error('Error loading circle:', error);
     alert('Failed to load circle details. Please try again.');

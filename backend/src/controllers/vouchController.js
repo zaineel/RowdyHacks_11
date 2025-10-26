@@ -10,6 +10,22 @@ export const createVouch = async (req, res, next) => {
     const userResult = await query('SELECT id FROM users WHERE auth0_id = $1', [auth0_id]);
     const voucher_id = userResult.rows[0].id;
 
+    // Check if user has already vouched for this person in this circle
+    const existingVouch = await query(
+      'SELECT * FROM vouches WHERE circle_id = $1 AND voucher_id = $2 AND vouchee_id = $3',
+      [circle_id, voucher_id, vouchee_id]
+    );
+
+    if (existingVouch.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          message: 'You have already vouched for this member',
+          status: 409
+        }
+      });
+    }
+
     const result = await query(
       `INSERT INTO vouches (circle_id, voucher_id, vouchee_id, trust_level, notes)
        VALUES ($1, $2, $3, $4, $5)
@@ -67,6 +83,33 @@ export const revokeVouch = async (req, res, next) => {
       success: true,
       data: result.rows[0],
       message: 'Vouch revoked'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyVouchesInCircle = async (req, res, next) => {
+  try {
+    const { circleId } = req.params;
+    const auth0_id = req.auth.sub;
+
+    // Get voucher ID
+    const userResult = await query('SELECT id FROM users WHERE auth0_id = $1', [auth0_id]);
+    const voucher_id = userResult.rows[0].id;
+
+    const result = await query(
+      `SELECT v.*, u.name as vouchee_name
+       FROM vouches v
+       JOIN users u ON v.vouchee_id = u.id
+       WHERE v.circle_id = $1 AND v.voucher_id = $2 AND v.status = 'active'
+       ORDER BY v.created_at DESC`,
+      [circleId, voucher_id]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows
     });
   } catch (error) {
     next(error);

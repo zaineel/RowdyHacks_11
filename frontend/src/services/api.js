@@ -89,6 +89,7 @@ export default {
   vouches: {
     create: (data) => api.post('/vouches', data),
     getUserVouches: (circleId, userId) => api.get(`/vouches/circle/${circleId}/user/${userId}`),
+    getMyVouches: (circleId) => api.get(`/vouches/circle/${circleId}/my-vouches`),
     revoke: (id) => api.delete(`/vouches/${id}`),
   },
 
