@@ -9,12 +9,33 @@ const api = axios.create({
   },
 });
 
+// Store for Auth0 token getter
+let getAccessTokenSilently = null;
+
+// Function to set the token getter from Auth0
+export const setAuth0TokenGetter = (tokenGetter) => {
+  getAccessTokenSilently = tokenGetter;
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    // Try to get Auth0 token if available
+    if (getAccessTokenSilently) {
+      try {
+        const token = await getAccessTokenSilently();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error('Error getting access token:', error);
+      }
+    } else {
+      // Fallback to localStorage
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -49,6 +70,7 @@ export default {
     create: (data) => api.post('/circles', data),
     getById: (id) => api.get(`/circles/${id}`),
     join: (id, inviteCode) => api.post(`/circles/${id}/join`, { invite_code: inviteCode }),
+    joinByInviteCode: (inviteCode) => api.post('/circles/join', { invite_code: inviteCode }),
     getMembers: (id) => api.get(`/circles/${id}/members`),
     update: (id, data) => api.put(`/circles/${id}`, data),
     getSchedule: (id) => api.get(`/circles/${id}/schedule`),

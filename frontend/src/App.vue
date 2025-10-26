@@ -45,9 +45,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { useAuth0 } from '@auth0/auth0-vue';
 import { useRouter } from 'vue-router';
+import { setAuth0TokenGetter } from './services/api';
+import api from './services/api';
 
 const router = useRouter();
 
@@ -62,13 +64,45 @@ const demoUser = ref({
 });
 
 // Use Auth0 or demo mode
-let isAuthenticated, user, auth0Logout;
+let isAuthenticated, user, auth0Logout, getAccessTokenSilently;
 
 if (!isDemoMode) {
   const auth0 = useAuth0();
   isAuthenticated = auth0.isAuthenticated;
   user = auth0.user;
   auth0Logout = auth0.logout;
+  getAccessTokenSilently = auth0.getAccessTokenSilently;
+
+  // Set up Auth0 token getter for API calls
+  onMounted(() => {
+    setAuth0TokenGetter(getAccessTokenSilently);
+  });
+
+  // Register user in database after Auth0 login
+  watch(isAuthenticated, async (authenticated) => {
+    if (authenticated && user.value) {
+      try {
+        // Try to get user from our database
+        const response = await api.auth.getCurrentUser();
+        console.log('User already registered:', response.data);
+      } catch (error) {
+        if (error.response?.status === 404) {
+          // User not in database, register them
+          console.log('Registering new user in database...');
+          try {
+            await api.auth.register({
+              name: user.value.name || user.value.email,
+              phone_number: user.value.phone_number || '',
+              language_preference: 'en'
+            });
+            console.log('User registered successfully!');
+          } catch (registerError) {
+            console.error('Error registering user:', registerError);
+          }
+        }
+      }
+    }
+  }, { immediate: true });
 } else {
   // Demo mode - always authenticated
   isAuthenticated = ref(true);

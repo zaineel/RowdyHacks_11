@@ -19,6 +19,13 @@ router.post('/', checkJwt, circleController.createCircle);
 router.get('/:id', checkJwt, circleController.getCircleById);
 
 /**
+ * @route   POST /api/circles/join
+ * @desc    Join a circle using invite code only
+ * @access  Private
+ */
+router.post('/join', checkJwt, circleController.joinCircleByInviteCode);
+
+/**
  * @route   POST /api/circles/:id/join
  * @desc    Request to join a circle with invite code
  * @access  Private

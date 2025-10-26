@@ -1,5 +1,12 @@
 <template>
   <div>
+    <!-- Loading State -->
+    <div v-if="loading" class="text-center py-12">
+      <div class="spinner mx-auto"></div>
+      <p class="text-dusty-300 mt-4">Loading circle details...</p>
+    </div>
+
+    <div v-else>
     <!-- Header -->
     <div class="flex justify-between items-start mb-8">
       <div>
@@ -111,15 +118,15 @@
           class="flex items-center justify-between p-3 bg-dusty-700 rounded-lg"
         >
           <div class="flex items-center space-x-3">
-            <span class="text-2xl">{{ slot.has_received ? '✅' : index === circle.current_cycle - 1 ? '➡️' : '⏳' }}</span>
+            <span class="text-2xl">{{ slot.has_received_payout ? '✅' : slot.position_in_cycle === circle.current_cycle ? '➡️' : '⏳' }}</span>
             <div>
               <p class="font-medium">{{ slot.user_name }}</p>
-              <p class="text-sm text-dusty-400">Position {{ index + 1 }}</p>
+              <p class="text-sm text-dusty-400">Position {{ slot.position_in_cycle }}</p>
             </div>
           </div>
           <div class="text-right">
-            <p class="font-bold text-frontier-400">${{ circle.monthly_amount * circle.current_members }}</p>
-            <p class="text-xs text-dusty-400">{{ slot.has_received ? 'Received' : 'Pending' }}</p>
+            <p class="font-bold text-frontier-400">${{ slot.monthly_amount * circle.current_members }}</p>
+            <p class="text-xs text-dusty-400">{{ slot.has_received_payout ? 'Received' : 'Pending' }}</p>
           </div>
         </div>
       </div>
@@ -132,6 +139,7 @@
         Payment history coming soon...
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -142,32 +150,22 @@ import api from '../services/api';
 
 const route = useRoute();
 const activeTab = ref('members');
+const loading = ref(false);
 
 const circle = ref({
-  name: 'Pioneer Circle',
-  description: 'Our first community circle',
-  status: 'active',
-  monthly_amount: 100,
-  current_members: 8,
-  max_members: 10,
-  current_cycle: 3,
-  next_payout_date: '2025-11-15',
-  invite_code: 'ABC123XYZ',
+  name: '',
+  description: '',
+  status: 'pending',
+  monthly_amount: 0,
+  current_members: 0,
+  max_members: 0,
+  current_cycle: 1,
+  next_payout_date: null,
+  invite_code: '',
 });
 
-const members = ref([
-  { id: 1, name: 'John Doe', credit_score: 680, status: 'active' },
-  { id: 2, name: 'Jane Smith', credit_score: 720, status: 'active' },
-  { id: 3, name: 'Maria Garcia', credit_score: 650, status: 'active' },
-  { id: 4, name: 'Ahmed Khan', credit_score: 590, status: 'pending' },
-]);
-
-const payoutSchedule = ref([
-  { user_name: 'John Doe', has_received: true },
-  { user_name: 'Jane Smith', has_received: true },
-  { user_name: 'Maria Garcia', has_received: false },
-  { user_name: 'Ahmed Khan', has_received: false },
-]);
+const members = ref([]);
+const payoutSchedule = ref([]);
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -183,12 +181,25 @@ const copyInviteCode = () => {
 
 onMounted(async () => {
   const circleId = route.params.id;
+  loading.value = true;
+
   try {
     // Load circle data
-    // const response = await api.circles.getById(circleId);
-    // circle.value = response.data.data;
+    const circleResponse = await api.circles.getById(circleId);
+    circle.value = circleResponse.data.data;
+
+    // Load members
+    const membersResponse = await api.circles.getMembers(circleId);
+    members.value = membersResponse.data.data;
+
+    // Load payout schedule
+    const scheduleResponse = await api.circles.getSchedule(circleId);
+    payoutSchedule.value = scheduleResponse.data.data;
   } catch (error) {
     console.error('Error loading circle:', error);
+    alert('Failed to load circle details. Please try again.');
+  } finally {
+    loading.value = false;
   }
 });
 </script>

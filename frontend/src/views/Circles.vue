@@ -5,9 +5,55 @@
         <h1 class="text-3xl font-bold text-frontier-400 mb-2">My Circles</h1>
         <p class="text-dusty-300">Manage your lending circles</p>
       </div>
-      <button @click="$router.push('/circles/create')" class="btn-frontier">
-        + Create New Circle
-      </button>
+      <div class="flex space-x-3">
+        <button @click="showJoinModal = true" class="btn-frontier-outline">
+          Join Circle
+        </button>
+        <button @click="$router.push('/circles/create')" class="btn-frontier">
+          + Create New Circle
+        </button>
+      </div>
+    </div>
+
+    <!-- Join Circle Modal -->
+    <div v-if="showJoinModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-dusty-800 rounded-lg p-6 max-w-md w-full mx-4">
+        <h2 class="text-2xl font-bold text-frontier-400 mb-4">Join a Circle</h2>
+        <p class="text-dusty-300 mb-6">Enter the invite code provided by the circle admin</p>
+
+        <form @submit.prevent="joinCircle">
+          <div class="mb-6">
+            <label class="block text-sm font-medium mb-2">Invite Code</label>
+            <input
+              v-model="inviteCode"
+              type="text"
+              required
+              placeholder="Enter invite code"
+              class="input-field uppercase"
+              :disabled="joiningCircle"
+            />
+          </div>
+
+          <div class="flex space-x-3">
+            <button
+              type="button"
+              @click="closeJoinModal"
+              class="btn-frontier-outline flex-1"
+              :disabled="joiningCircle"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn-frontier flex-1"
+              :disabled="joiningCircle"
+            >
+              <span v-if="joiningCircle" class="spinner inline-block mr-2"></span>
+              {{ joiningCircle ? 'Joining...' : 'Join Circle' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div v-if="loading" class="text-center py-12">
@@ -65,28 +111,10 @@ import api from '../services/api';
 
 const { user } = useAuth0();
 const loading = ref(false);
-const circles = ref([
-  {
-    id: '1',
-    name: 'Pioneer Circle',
-    description: 'Our first community circle',
-    status: 'active',
-    monthly_amount: 100,
-    current_members: 8,
-    max_members: 10,
-    next_payout_date: '2025-11-15',
-  },
-  {
-    id: '2',
-    name: 'Frontier Fund',
-    description: 'Student emergency fund',
-    status: 'active',
-    monthly_amount: 50,
-    current_members: 15,
-    max_members: 20,
-    next_payout_date: '2025-11-20',
-  },
-]);
+const circles = ref([]);
+const showJoinModal = ref(false);
+const inviteCode = ref('');
+const joiningCircle = ref(false);
 
 const statusClass = (status) => {
   const classes = {
@@ -105,16 +133,55 @@ const formatDate = (dateString) => {
   });
 };
 
-onMounted(async () => {
+const loadCircles = async () => {
   loading.value = true;
   try {
-    // Load user circles
-    // const response = await api.users.getCircles(user.value.sub);
-    // circles.value = response.data.data;
+    // First get current user from database to get the database user ID
+    const currentUserResponse = await api.auth.getCurrentUser();
+    const dbUserId = currentUserResponse.data.data.id;
+
+    // Then load user circles using the database user ID
+    const circlesResponse = await api.users.getCircles(dbUserId);
+    circles.value = circlesResponse.data.data;
   } catch (error) {
     console.error('Error loading circles:', error);
   } finally {
     loading.value = false;
   }
+};
+
+const joinCircle = async () => {
+  if (!inviteCode.value.trim()) {
+    alert('Please enter an invite code');
+    return;
+  }
+
+  joiningCircle.value = true;
+  try {
+    const response = await api.circles.joinByInviteCode(inviteCode.value.trim());
+    alert(response.data.message || 'Successfully joined the circle!');
+
+    // Close modal and reset form
+    closeJoinModal();
+
+    // Reload circles to show the newly joined circle
+    await loadCircles();
+  } catch (error) {
+    console.error('Error joining circle:', error);
+    const errorMessage = error.response?.data?.error?.message || 'Failed to join circle. Please check the invite code and try again.';
+    alert(errorMessage);
+  } finally {
+    joiningCircle.value = false;
+  }
+};
+
+const closeJoinModal = () => {
+  showJoinModal.value = false;
+  inviteCode.value = '';
+  joiningCircle.value = false;
+};
+
+onMounted(async () => {
+  await loadCircles();
 });
 </script>

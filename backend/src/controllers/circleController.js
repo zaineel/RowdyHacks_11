@@ -353,3 +353,75 @@ export const getPayoutSchedule = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Join a circle using only invite code
+ */
+export const joinCircleByInviteCode = async (req, res, next) => {
+  try {
+    const { invite_code } = req.body;
+    const auth0_id = req.auth.sub;
+
+    // Get user ID
+    const userResult = await query('SELECT id FROM users WHERE auth0_id = $1', [auth0_id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'User not found', status: 404 }
+      });
+    }
+    const user_id = userResult.rows[0].id;
+
+    // Find circle by invite code
+    const circleResult = await query(
+      'SELECT * FROM circles WHERE invite_code = $1',
+      [invite_code.toUpperCase()]
+    );
+
+    if (circleResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Invalid invite code', status: 404 }
+      });
+    }
+
+    const circle = circleResult.rows[0];
+
+    // Check if circle is full
+    if (circle.current_members >= circle.max_members) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Circle is full', status: 400 }
+      });
+    }
+
+    // Check if user is already a member
+    const memberCheck = await query(
+      'SELECT * FROM circle_members WHERE circle_id = $1 AND user_id = $2',
+      [circle.id, user_id]
+    );
+
+    if (memberCheck.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Already a member of this circle', status: 400 }
+      });
+    }
+
+    // Add user as pending member
+    const result = await query(
+      `INSERT INTO circle_members (circle_id, user_id, status, role)
+       VALUES ($1, $2, 'pending', 'member')
+       RETURNING *`,
+      [circle.id, user_id]
+    );
+
+    res.status(201).json({
+      success: true,
+      data: { ...result.rows[0], circle },
+      message: 'Join request submitted. Waiting for approval.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
