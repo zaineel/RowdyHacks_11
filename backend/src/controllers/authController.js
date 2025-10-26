@@ -22,12 +22,13 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // Create new user
+    // Create new user - convert empty phone number to null to avoid unique constraint violation
+    const phoneValue = phone_number && phone_number.trim() !== '' ? phone_number : null;
     const result = await query(
       `INSERT INTO users (auth0_id, name, phone_number, language_preference)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [auth0_id, name, phone_number, language_preference]
+      [auth0_id, name, phoneValue, language_preference]
     );
 
     res.status(201).json({

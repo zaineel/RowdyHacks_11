@@ -30,7 +30,6 @@ app.use(helmet());
 app.use(compression());
 
 // CORS configuration
-// CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -40,13 +39,14 @@ const corsOptions = {
       "http://localhost:5173", // Local development (HTTP)
       "https://localhost:5173", // Local development (HTTPS)
       "https://994cfecc.payitforward-41x.pages.dev", // Production frontend
-      process.env.CORS_ORIGIN, // Environment variable override
+      ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []), // Environment variable override (comma-separated)
     ].filter(Boolean); // Remove any undefined values
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log("CORS blocked origin:", origin);
+      console.log("Allowed origins:", allowedOrigins);
       callback(new Error("Not allowed by CORS"));
     }
   },
