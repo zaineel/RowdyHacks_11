@@ -1,105 +1,256 @@
 <template>
-  <div>
-    <div class="flex justify-between items-center mb-8">
-      <div>
-        <h1 class="text-3xl font-bold text-frontier-400 mb-2">Credit Score</h1>
-        <p class="text-dusty-300">Track your financial reputation</p>
-      </div>
-      <button
-        @click="downloadCreditReport"
-        :disabled="loading || isGeneratingPDF"
-        class="btn-frontier flex items-center space-x-2"
-      >
-        <svg v-if="!isGeneratingPDF" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        <span v-if="isGeneratingPDF" class="spinner inline-block"></span>
-        <span>{{ isGeneratingPDF ? 'Generating...' : 'Download Report' }}</span>
-      </button>
+  <div
+    class="min-h-screen bg-gradient-to-br from-dusty-900 via-dusty-800 to-frontier-900">
+    <!-- Animated Background Elements -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+      <div
+        class="absolute -top-40 -right-40 w-80 h-80 bg-frontier-500/10 rounded-full blur-3xl animate-pulse"></div>
+      <div
+        class="absolute -bottom-40 -left-40 w-80 h-80 bg-starlight-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      <div
+        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cosmic-500/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="text-center py-16">
-      <div class="spinner mx-auto mb-4"></div>
-      <p class="text-dusty-400">Loading your credit data...</p>
-    </div>
-
-    <!-- Credit Score Card -->
-    <div v-else class="card mb-8 text-center">
-      <div class="text-dusty-400 text-sm mb-2">Your Credit Score</div>
-      <div class="text-7xl font-bold text-frontier-400 mb-4">{{ creditScore }}</div>
-      <div v-if="creditTrend !== 0" class="text-sm" :class="creditTrend > 0 ? 'text-green-400' : 'text-red-400'">
-        {{ creditTrend > 0 ? '+' : '' }}{{ creditTrend }} points this month {{ creditTrend > 0 ? '📈' : '📉' }}
-      </div>
-      <div v-else class="text-sm text-dusty-400">No change this month</div>
-
-      <div class="mt-6 h-4 bg-dusty-700 rounded-full overflow-hidden">
-        <div
-          class="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-500"
-          :style="{ width: `${((creditScore - 300) / 550) * 100}%` }"
-        ></div>
-      </div>
-      <div class="flex justify-between text-xs text-dusty-400 mt-2">
-        <span>300</span>
-        <span>850</span>
-      </div>
-    </div>
-
-    <!-- Credit Factors -->
-    <div v-if="!loading" class="grid md:grid-cols-3 gap-6 mb-8">
-      <div class="card">
-        <h3 class="text-sm text-dusty-400 mb-2">Payment History</h3>
-        <div class="text-2xl font-bold" :class="paymentHistoryPercent >= 90 ? 'text-green-400' : paymentHistoryPercent >= 70 ? 'text-yellow-400' : 'text-red-400'">
-          {{ paymentHistoryPercent }}%
-        </div>
-        <p class="text-xs text-dusty-300 mt-2">{{ onTimePayments }} / {{ totalPayments }} on-time</p>
-      </div>
-
-      <div class="card">
-        <h3 class="text-sm text-dusty-400 mb-2">Circle Participation</h3>
-        <div class="text-2xl font-bold text-starlight-400">{{ activeCircles }}</div>
-        <p class="text-xs text-dusty-300 mt-2">Active circles</p>
-      </div>
-
-      <div class="card">
-        <h3 class="text-sm text-dusty-400 mb-2">Community Trust</h3>
-        <div class="text-2xl font-bold text-cosmic-400">{{ vouchesReceived }}</div>
-        <p class="text-xs text-dusty-300 mt-2">Vouches received</p>
-      </div>
-    </div>
-
-    <!-- Credit History -->
-    <div v-if="!loading" class="card">
-      <h2 class="text-2xl font-semibold mb-4 text-frontier-400">Recent Activity</h2>
-
-      <!-- Empty state -->
-      <div v-if="creditHistory.length === 0" class="text-center py-12">
-        <span class="text-6xl mb-4 block">🌟</span>
-        <p class="text-dusty-300 mb-2">No credit activity yet</p>
-        <p class="text-sm text-dusty-400">Start by joining a circle and making payments!</p>
-      </div>
-
-      <!-- Credit history list -->
-      <div v-else class="space-y-3">
-        <div
-          v-for="event in creditHistory"
-          :key="event.id"
-          class="flex items-center justify-between p-3 bg-dusty-700 rounded-lg"
-        >
-          <div class="flex items-center space-x-3">
-            <span :class="event.impact > 0 ? 'text-green-400' : 'text-red-400'">
-              {{ event.impact > 0 ? '📈' : '📉' }}
-            </span>
-            <div>
-              <p class="text-dusty-100">{{ event.description || event.event_type.replace(/_/g, ' ') }}</p>
-              <p class="text-sm text-dusty-400">{{ event.circle_name || 'PayItForward' }}</p>
-            </div>
+    <div class="relative max-w-7xl mx-auto px-4 py-12">
+      <!-- Header Section -->
+      <div class="mb-12 flex flex-col lg:flex-row items-center justify-between">
+        <div class="flex items-center space-x-4 mb-6 lg:mb-0">
+          <div
+            class="w-16 h-16 bg-gradient-to-br from-frontier-400 to-starlight-400 rounded-2xl flex items-center justify-center text-2xl animate-pulse">
+            ⭐
           </div>
-          <div class="text-right">
-            <p :class="event.impact > 0 ? 'text-green-400' : 'text-red-400'" class="font-semibold">
-              {{ event.impact > 0 ? '+' : '' }}{{ event.impact }}
+          <div>
+            <h1
+              class="text-5xl font-bold bg-gradient-to-r from-frontier-300 to-starlight-300 bg-clip-text text-transparent mb-2">
+              Credit Score
+            </h1>
+            <p class="text-xl text-dusty-300">
+              Track your financial reputation
             </p>
-            <p class="text-xs text-dusty-400">{{ event.date }}</p>
+          </div>
+        </div>
+        <button
+          @click="downloadCreditReport"
+          :disabled="loading || isGeneratingPDF"
+          class="group relative bg-gradient-to-r from-frontier-500 to-starlight-500 hover:from-frontier-600 hover:to-starlight-600 text-white font-bold py-3 px-6 rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-frontier-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+          <div class="flex items-center space-x-3">
+            <svg
+              v-if="!isGeneratingPDF"
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div
+              v-if="isGeneratingPDF"
+              class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            <span>{{ isGeneratingPDF ? "Generating..." : "Download Report" }}</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="loading" class="text-center py-20">
+        <div class="inline-flex flex-col items-center space-y-4">
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-b-2 border-frontier-400"></div>
+          <p class="text-dusty-300 text-lg">Loading your credit data...</p>
+        </div>
+      </div>
+
+      <!-- Credit Score Card -->
+      <div
+        v-else
+        class="relative bg-gradient-to-br from-dusty-800/30 via-frontier-800/20 to-dusty-700/30 backdrop-blur-sm rounded-3xl p-12 border border-dusty-600/40 shadow-2xl mb-8 text-center">
+        <!-- Animated background -->
+        <div
+          class="absolute inset-0 bg-gradient-to-br from-frontier-500/10 to-transparent rounded-3xl opacity-50"></div>
+
+        <div class="relative z-10">
+          <div class="text-dusty-300 text-lg mb-4 font-semibold">
+            Your Credit Score
+          </div>
+          <div
+            class="text-8xl font-bold bg-gradient-to-r from-frontier-300 to-starlight-300 bg-clip-text text-transparent mb-6">
+            {{ creditScore }}
+          </div>
+          <div
+            v-if="creditTrend !== 0"
+            class="text-lg font-semibold mb-6"
+            :class="creditTrend > 0 ? 'text-green-400' : 'text-red-400'">
+            {{ creditTrend > 0 ? "+" : "" }}{{ creditTrend }} points this month
+            {{ creditTrend > 0 ? "📈" : "📉" }}
+          </div>
+          <div v-else class="text-lg text-dusty-400 mb-6">
+            No change this month
+          </div>
+
+          <div class="mt-8 h-6 bg-dusty-700/50 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-500 rounded-full"
+              :style="{ width: `${((creditScore - 300) / 550) * 100}%` }"></div>
+          </div>
+          <div class="flex justify-between text-sm text-dusty-400 mt-3">
+            <span class="font-semibold">300</span>
+            <span class="font-semibold">850</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Credit Factors -->
+      <div v-if="!loading" class="grid md:grid-cols-3 gap-6 mb-8">
+        <!-- Payment History Card -->
+        <div
+          class="relative bg-gradient-to-br from-dusty-800/30 via-frontier-800/20 to-dusty-700/30 backdrop-blur-sm rounded-3xl p-6 border border-dusty-600/40 shadow-2xl">
+          <div
+            class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent rounded-3xl opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+          <div class="relative z-10">
+            <div class="flex items-center space-x-3 mb-4">
+              <div
+                class="w-10 h-10 bg-gradient-to-br from-green-400 to-green-500 rounded-xl flex items-center justify-center text-lg">
+                ✅
+              </div>
+              <h3 class="text-sm text-dusty-300 font-semibold">
+                Payment History
+              </h3>
+            </div>
+            <div
+              class="text-4xl font-bold mb-2"
+              :class="
+                paymentHistoryPercent >= 90
+                  ? 'text-green-400'
+                  : paymentHistoryPercent >= 70
+                  ? 'text-yellow-400'
+                  : 'text-red-400'
+              ">
+              {{ paymentHistoryPercent }}%
+            </div>
+            <p class="text-sm text-dusty-400">
+              {{ onTimePayments }} / {{ totalPayments }} on-time
+            </p>
+          </div>
+        </div>
+
+        <!-- Circle Participation Card -->
+        <div
+          class="relative bg-gradient-to-br from-dusty-800/30 via-frontier-800/20 to-dusty-700/30 backdrop-blur-sm rounded-3xl p-6 border border-dusty-600/40 shadow-2xl">
+          <div
+            class="absolute inset-0 bg-gradient-to-br from-starlight-500/10 to-transparent rounded-3xl opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+          <div class="relative z-10">
+            <div class="flex items-center space-x-3 mb-4">
+              <div
+                class="w-10 h-10 bg-gradient-to-br from-starlight-400 to-starlight-500 rounded-xl flex items-center justify-center text-lg">
+                🏕️
+              </div>
+              <h3 class="text-sm text-dusty-300 font-semibold">
+                Circle Participation
+              </h3>
+            </div>
+            <div class="text-4xl font-bold text-starlight-400 mb-2">
+              {{ activeCircles }}
+            </div>
+            <p class="text-sm text-dusty-400">Active circles</p>
+          </div>
+        </div>
+
+        <!-- Community Trust Card -->
+        <div
+          class="relative bg-gradient-to-br from-dusty-800/30 via-frontier-800/20 to-dusty-700/30 backdrop-blur-sm rounded-3xl p-6 border border-dusty-600/40 shadow-2xl">
+          <div
+            class="absolute inset-0 bg-gradient-to-br from-cosmic-500/10 to-transparent rounded-3xl opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+          <div class="relative z-10">
+            <div class="flex items-center space-x-3 mb-4">
+              <div
+                class="w-10 h-10 bg-gradient-to-br from-cosmic-400 to-cosmic-500 rounded-xl flex items-center justify-center text-lg">
+                🤝
+              </div>
+              <h3 class="text-sm text-dusty-300 font-semibold">
+                Community Trust
+              </h3>
+            </div>
+            <div class="text-4xl font-bold text-cosmic-400 mb-2">
+              {{ vouchesReceived }}
+            </div>
+            <p class="text-sm text-dusty-400">Vouches received</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Credit History -->
+      <div
+        v-if="!loading"
+        class="relative bg-gradient-to-br from-dusty-800/30 via-frontier-800/20 to-dusty-700/30 backdrop-blur-sm rounded-3xl p-8 border border-dusty-600/40 shadow-2xl">
+        <div class="flex items-center space-x-3 mb-6">
+          <div
+            class="w-10 h-10 bg-gradient-to-br from-starlight-400 to-cosmic-400 rounded-xl flex items-center justify-center text-xl">
+            📊
+          </div>
+          <h2
+            class="text-2xl font-bold bg-gradient-to-r from-frontier-300 to-starlight-300 bg-clip-text text-transparent">
+            Recent Activity
+          </h2>
+        </div>
+
+        <!-- Empty state -->
+        <div v-if="creditHistory.length === 0" class="text-center py-12">
+          <div
+            class="w-24 h-24 bg-gradient-to-br from-frontier-500/20 to-starlight-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span class="text-5xl">🌟</span>
+          </div>
+          <p class="text-dusty-300 text-lg mb-2">No credit activity yet</p>
+          <p class="text-dusty-400">
+            Start by joining a circle and making payments!
+          </p>
+        </div>
+
+        <!-- Credit history list -->
+        <div v-else class="space-y-3">
+          <div
+            v-for="event in creditHistory"
+            :key="event.id"
+            class="group relative bg-gradient-to-br from-dusty-800/40 via-frontier-800/30 to-dusty-700/40 rounded-2xl p-4 border border-dusty-600/40 hover:border-frontier-500/50 transition-all duration-300">
+            <div
+              class="absolute inset-0 bg-gradient-to-br from-frontier-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+            <div class="relative z-10 flex items-center justify-between">
+              <div class="flex items-center space-x-4">
+                <div
+                  :class="
+                    event.impact > 0
+                      ? 'bg-gradient-to-br from-green-500 to-green-600'
+                      : 'bg-gradient-to-br from-red-500 to-red-600'
+                  "
+                  class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl">
+                  {{ event.impact > 0 ? "📈" : "📉" }}
+                </div>
+                <div>
+                  <p class="text-dusty-100 font-semibold">
+                    {{
+                      event.description ||
+                      event.event_type.replace(/_/g, " ")
+                    }}
+                  </p>
+                  <p class="text-sm text-dusty-400">
+                    {{ event.circle_name || "PayItForward" }}
+                  </p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p
+                  :class="
+                    event.impact > 0 ? 'text-green-400' : 'text-red-400'
+                  "
+                  class="text-2xl font-bold mb-1">
+                  {{ event.impact > 0 ? "+" : "" }}{{ event.impact }}
+                </p>
+                <p class="text-xs text-dusty-400">{{ event.date }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

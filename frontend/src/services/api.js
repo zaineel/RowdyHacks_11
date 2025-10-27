@@ -1,8 +1,7 @@
 import axios from "axios";
 
-// Use production API URL
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://api.crisiscopilot.tech/api";
+// API URL - defaults to localhost for development
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -25,7 +24,14 @@ api.interceptors.request.use(
     // Try to get Auth0 token if available
     if (getAccessTokenSilently) {
       try {
-        const token = await getAccessTokenSilently();
+        const token = await getAccessTokenSilently({
+          authorizationParams: {
+            audience:
+              import.meta.env.VITE_AUTH0_AUDIENCE ||
+              "https://api.payitforward.com",
+            scope: "openid profile email",
+          },
+        });
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }

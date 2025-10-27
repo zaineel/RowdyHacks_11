@@ -1140,7 +1140,40 @@ const loadPoolStatus = async () => {
   try {
     const circleId = route.params.id;
     const poolResponse = await api.circles.getPoolStatus(circleId);
-    poolStatus.value = poolResponse.data.data;
+    const data = poolResponse.data.data;
+    poolStatus.value = data;
+
+    // Check if automatic payout was triggered
+    if (data.auto_payout_triggered && data.payout_details) {
+      console.log('✅ Automatic payout was triggered!', data.payout_details);
+      // Show success message
+      alert(`🎉 Automatic Payout Released!\n\n${data.next_recipient_name || 'Recipient'} received $${data.payout_details.amount} for cycle ${data.payout_details.cycle_number}`);
+
+      // Reload circle data and payout notifications to show the new payout
+      await loadCircleData();
+
+      // Load payout notifications
+      try {
+        const notificationsResponse = await api.circles.getPayoutNotifications();
+        payoutNotifications.value = notificationsResponse.data.data;
+      } catch (error) {
+        console.error("Error loading payout notifications:", error);
+      }
+
+      // Load payout history
+      try {
+        const payoutsResponse = await api.payouts.getByCircle(circleId);
+        payouts.value = payoutsResponse.data.data;
+      } catch (error) {
+        console.error("Error loading payouts:", error);
+      }
+    }
+
+    // Check if there was a payout error
+    if (data.payout_error) {
+      console.error('❌ Automatic payout failed:', data.payout_error);
+      alert(`⚠️ Automatic Payout Failed\n\n${data.payout_error}\n\nPlease contact an administrator or use manual payout.`);
+    }
   } catch (error) {
     console.error("Error loading pool status:", error);
   }

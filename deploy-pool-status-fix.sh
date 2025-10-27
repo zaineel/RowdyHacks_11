@@ -65,20 +65,28 @@ export const processPayout = async (req, res, next) => {
       );
 
       // Update next payout user (find next member who hasn't received payout)
-      const nextRecipientResult = await client.query(
-        `SELECT user_id FROM circle_members
+      const nextMemberResult = await client.query(
+        `SELECT user_id FROM circle_members 
          WHERE circle_id = $1 AND status = 'active' AND has_received_payout = FALSE
          ORDER BY position_in_cycle ASC
          LIMIT 1`,
         [circle_id]
       );
 
-      if (nextRecipientResult.rows.length > 0) {
+      if (nextMemberResult.rows.length > 0) {
         await client.query(
-          `UPDATE circles
-           SET next_payout_user_id = $1
+          `UPDATE circles 
+           SET next_payout_user_id = $1, next_payout_date = CURRENT_DATE + INTERVAL '1 month'
            WHERE id = $2`,
-          [nextRecipientResult.rows[0].user_id, circle_id]
+          [nextMemberResult.rows[0].user_id, circle_id]
+        );
+      } else {
+        // All members have received payouts, circle is complete
+        await client.query(
+          `UPDATE circles 
+           SET status = 'completed', next_payout_user_id = NULL, next_payout_date = NULL
+           WHERE id = $1`,
+          [circle_id]
         );
       }
 
@@ -94,7 +102,7 @@ export const processPayout = async (req, res, next) => {
       return payoutResult.rows[0];
     });
 
-    res.status(201).json({
+    res.json({
       success: true,
       data: result,
       message: "Payout processed successfully",
@@ -105,7 +113,7 @@ export const processPayout = async (req, res, next) => {
 };
 
 /**
- * Get all payouts for a specific circle
+ * Get payout history for a circle
  */
 export const getCirclePayouts = async (req, res, next) => {
   try {
@@ -161,7 +169,7 @@ export const getPayoutsDue = async (req, res, next) => {
  */
 export const getPoolStatus = async (req, res, next) => {
   try {
-    const { id: circleId } = req.params;
+    const { circleId } = req.params;
 
     const result = await query(
       `SELECT c.id,
@@ -190,8 +198,6 @@ export const getPoolStatus = async (req, res, next) => {
     const pool = result.rows[0];
     const expectedPoolAmount = pool.monthly_amount * pool.total_active_members;
     const poolProgress = (pool.current_pool_amount / expectedPoolAmount) * 100;
-    const isReadyForPayout =
-      pool.members_paid >= pool.total_active_members || poolProgress >= 100;
 
     // Get detailed member payment status
     const memberPaymentsResult = await query(
@@ -220,122 +226,20 @@ export const getPoolStatus = async (req, res, next) => {
       payment_status: row.payment_status,
     }));
 
-    // Auto-trigger payout if pool is full and ready
-    let payoutResult = null;
-    let payoutError = null;
-
-    if (isReadyForPayout && pool.next_recipient_id) {
-      try {
-        console.log(`[AUTO-PAYOUT] Triggering automatic payout for circle ${circleId}, cycle ${pool.current_cycle}`);
-        console.log(`[AUTO-PAYOUT] Pool amount: $${pool.current_pool_amount}, Expected: $${expectedPoolAmount}`);
-        console.log(`[AUTO-PAYOUT] Members paid: ${pool.members_paid}/${pool.total_active_members}`);
-        console.log(`[AUTO-PAYOUT] Recipient: ${pool.next_recipient_name} (ID: ${pool.next_recipient_id})`);
-
-        payoutResult = await triggerAutomaticPayout(circleId, pool);
-
-        console.log(`[AUTO-PAYOUT] SUCCESS! Payout ${payoutResult.id} completed for $${payoutResult.amount}`);
-      } catch (payoutError_) {
-        payoutError = payoutError_;
-        console.error("[AUTO-PAYOUT] ERROR:", payoutError_.message);
-        console.error("[AUTO-PAYOUT] Stack:", payoutError_.stack);
-      }
-    } else if (isReadyForPayout && !pool.next_recipient_id) {
-      console.warn(`[AUTO-PAYOUT] Pool is ready but no next recipient set for circle ${circleId}`);
-      payoutError = new Error("No next recipient set for payout");
-    }
-
     res.json({
       success: true,
       data: {
         ...pool,
         expected_pool_amount: expectedPoolAmount,
         pool_progress: Math.min(poolProgress, 100),
-        is_ready_for_payout: isReadyForPayout,
+        is_ready_for_payout:
+          pool.members_paid >= pool.total_active_members || poolProgress >= 80,
         member_payments: memberPayments,
-        auto_payout_triggered: !!payoutResult,
-        payout_details: payoutResult,
-        payout_error: payoutError ? payoutError.message : null,
       },
     });
   } catch (error) {
     next(error);
   }
-};
-
-/**
- * Trigger automatic payout when pool is full
- */
-const triggerAutomaticPayout = async (circleId, pool) => {
-  return await transaction(async (client) => {
-    // Check if payout already exists for this cycle
-    const existingPayout = await client.query(
-      `SELECT id FROM payouts WHERE circle_id = $1 AND cycle_number = $2`,
-      [circleId, pool.current_cycle]
-    );
-
-    if (existingPayout.rows.length > 0) {
-      return existingPayout.rows[0]; // Payout already processed
-    }
-
-    // Create payout record
-    const payoutResult = await client.query(
-      `INSERT INTO payouts (circle_id, recipient_id, amount, cycle_number, status, payout_type)
-       VALUES ($1, $2, $3, $4, 'completed', 'automatic')
-       RETURNING *`,
-      [
-        circleId,
-        pool.next_recipient_id,
-        pool.current_pool_amount,
-        pool.current_cycle,
-      ]
-    );
-
-    // Mark member as having received payout
-    await client.query(
-      `UPDATE circle_members
-       SET has_received_payout = TRUE, payout_received_date = CURRENT_DATE
-       WHERE circle_id = $1 AND user_id = $2`,
-      [circleId, pool.next_recipient_id]
-    );
-
-    // Reset pool and advance to next cycle
-    await client.query(
-      `UPDATE circles
-       SET current_pool_amount = 0,
-           current_cycle = current_cycle + 1
-       WHERE id = $1`,
-      [circleId]
-    );
-
-    // Update next payout user (find next member who hasn't received payout)
-    const nextRecipientResult = await client.query(
-      `SELECT user_id FROM circle_members
-       WHERE circle_id = $1 AND status = 'active' AND has_received_payout = FALSE
-       ORDER BY position_in_cycle ASC
-       LIMIT 1`,
-      [circleId]
-    );
-
-    if (nextRecipientResult.rows.length > 0) {
-      await client.query(
-        `UPDATE circles
-         SET next_payout_user_id = $1
-         WHERE id = $2`,
-        [nextRecipientResult.rows[0].user_id, circleId]
-      );
-    }
-
-    // Update credit score for recipient
-    await updateCreditScore(
-      pool.next_recipient_id,
-      "payout_received",
-      5,
-      circleId,
-      client
-    );
-
-    return payoutResult.rows[0];
-  });
 };
 
 /**
@@ -360,42 +264,4 @@ export const getUserPayouts = async (req, res, next) => {
   }
 };
 
-/**
- * Get payout notifications for a user
- */
-export const getPayoutNotifications = async (req, res, next) => {
-  try {
-    const userId = req.user.sub; // From JWT token
-
-    // Get recent payouts (last 30 days)
-    const result = await query(
-      `SELECT p.*, c.name as circle_name, c.invite_code
-       FROM payouts p
-       JOIN circles c ON p.circle_id = c.id
-       WHERE p.recipient_id = $1 
-         AND p.created_at >= NOW() - INTERVAL '30 days'
-       ORDER BY p.created_at DESC
-       LIMIT 10`,
-      [userId]
-    );
-
-    // Format notifications
-    const notifications = result.rows.map((payout) => ({
-      id: payout.id,
-      type: "payout_received",
-      title: "💰 Payout Received!",
-      message: `You received $${payout.amount} from ${payout.circle_name}`,
-      amount: payout.amount,
-      circle_name: payout.circle_name,
-      circle_code: payout.invite_code,
-      cycle_number: payout.cycle_number,
-      payout_type: payout.payout_type || "manual",
-      created_at: payout.created_at,
-      is_read: false,
-    }));
-
-    res.json({ success: true, data: notifications });
-  } catch (error) {
-    next(error);
-  }
-};
+new

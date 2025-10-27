@@ -14,6 +14,7 @@ import payoutRoutes from "./routes/payouts.js";
 import vouchRoutes from "./routes/vouches.js";
 import creditRoutes from "./routes/credit.js";
 import aiRoutes from "./routes/ai.js";
+import marketplaceRoutes from "./routes/marketplace.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -39,7 +40,9 @@ const corsOptions = {
     const allowedOrigins = [
       "http://localhost:5173", // Local development (HTTP)
       "https://localhost:5173", // Local development (HTTPS)
-      "https://994cfecc.payitforward-41x.pages.dev", // Production frontend
+      "https://994cfecc.payitforward-41x.pages.dev", // Cloudflare Pages deployment
+      "https://lassothestars.rodeo", // Production custom domain
+      "https://www.lassothestars.rodeo", // Production www subdomain
       ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []), // Environment variable override (comma-separated)
     ].filter(Boolean); // Remove any undefined values
 
@@ -90,6 +93,7 @@ app.use("/api/payouts", payoutRoutes);
 app.use("/api/vouches", vouchRoutes);
 app.use("/api/credit", creditRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/marketplace", marketplaceRoutes);
 
 // 404 handler
 app.use(notFound);
